@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import woodwork.category.Category;
@@ -29,7 +30,9 @@ public class ProductService {
         this.fileStorageService = fileStorageService;
     }
 
-    public ProductResponse getAllProducts(int pageNo, int pageSize, String sortBy, String sortDir) {
+    public ProductResponse getAllProducts(int pageNo, int pageSize, String sortBy, String sortDir,
+                                            String searchTerm, Double minPrice, Double maxPrice, UUID categoryId
+    ) {
         
         // determine the sorting direction
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
@@ -39,8 +42,11 @@ public class ProductService {
         // pagination instructions
         Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
 
+        // generate the sql rules based on what the user typed
+        Specification<Product> spec = ProductSpecification.filterProducts(searchTerm, minPrice, maxPrice, categoryId);
+
         // ask the database for the specific piece of data
-        Page<Product> products = productRepository.findAll(pageable);
+        Page<Product> products = productRepository.findAll(spec, pageable);
 
         // convert the slice of entities into a slice of dtos
         List<ProductDto> content = products.getContent().stream()

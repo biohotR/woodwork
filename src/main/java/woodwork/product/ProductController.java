@@ -27,12 +27,17 @@ public class ProductController {
 
     @GetMapping
     public ProductResponse getAllProducts(
-                @RequestParam(value = "pageNo", defaultValue = "0", required = false) int pageNo,
-                @RequestParam(value = "pageSize", defaultValue = "10", required = false) int pageSize,
-                @RequestParam(value = "sortBy", defaultValue = "id", required = false) String sortBy,
-                @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir
+            @RequestParam(value = "pageNo", defaultValue = "0", required = false) int pageNo,
+            @RequestParam(value = "pageSize", defaultValue = "10", required = false) int pageSize,
+            @RequestParam(value = "sortBy", defaultValue = "id", required = false) String sortBy,
+            @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir,
+            
+            @RequestParam(value = "search", required = false) String searchTerm,
+            @RequestParam(value = "minPrice", required = false) Double minPrice,
+            @RequestParam(value = "maxPrice", required = false) Double maxPrice,
+            @RequestParam(value = "categoryId", required = false) UUID categoryId
     ) {
-        return productService.getAllProducts(pageNo, pageSize, sortBy, sortDir);
+        return productService.getAllProducts(pageNo, pageSize, sortBy, sortDir, searchTerm, minPrice, maxPrice, categoryId);
     }
 
     @PostMapping
@@ -51,4 +56,5 @@ public class ProductController {
             @RequestParam("file") MultipartFile file) {
         return productService.uploadProductImage(id, file);
     }
+    
 }
