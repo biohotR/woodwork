@@ -40,8 +40,11 @@ public class SecurityConfig {
                 // anyone can access the register and login endpoints
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // uploaded images
+                .requestMatchers("/uploads/**").permitAll()
                 // other requests require authentification
                 .anyRequest().authenticated()
+                
             );
         
             http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

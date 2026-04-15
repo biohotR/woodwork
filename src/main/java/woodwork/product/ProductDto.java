@@ -25,12 +25,15 @@ public class ProductDto {
     
     private String categoryName;
 
+    private String imageUrl;
+
     public static ProductDto fromEntity(Product product) {
         ProductDto dto = new ProductDto();
         dto.setId(product.getId());
         dto.setName(product.getName());
         dto.setDescription(product.getDescription());
         dto.setPrice(product.getPrice());
+        dto.setImageUrl(product.getImageUrl());
         
         if (product.getCategory() != null) {
             dto.setCategoryId(product.getCategory().getId());

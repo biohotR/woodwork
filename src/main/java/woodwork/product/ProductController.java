@@ -2,6 +2,7 @@ package woodwork.product;
 
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 
@@ -41,5 +43,12 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public void deleteProduct(@PathVariable UUID id) {
         productService.deleteProduct(id);
+    }
+
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ProductDto uploadProductImage(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) {
+        return productService.uploadProductImage(id, file);
     }
 }

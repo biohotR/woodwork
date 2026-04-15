@@ -17,11 +17,16 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final FileStorageService fileStorageService;
 
     // add both repositories for the service to work
-    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
+    public ProductService(ProductRepository productRepository,
+                          CategoryRepository categoryRepository,
+                          FileStorageService fileStorageService) {
+
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     public ProductResponse getAllProducts(int pageNo, int pageSize, String sortBy, String sortDir) {
@@ -79,5 +84,21 @@ public class ProductService {
             throw new IllegalArgumentException("Product not found with ID: " + id);
         }
         productRepository.deleteById(id);
+    }
+
+    public ProductDto uploadProductImage(UUID productId, org.springframework.web.multipart.MultipartFile file) {
+        // check if the product exists
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + productId));
+
+        // save the physical file to the disk
+        String imageUrl = fileStorageService.saveFile(file);
+
+        // update the database record with the new url
+        product.setImageUrl(imageUrl);
+        Product savedProduct = productRepository.save(product);
+
+        // Return the updated dto
+        return ProductDto.fromEntity(savedProduct);
     }
 }
