@@ -1,0 +1,10 @@
+services:
+    postgres-db:
+        image: postgres:15
+        container_name: woodwork_db
+        environment:
+            POSTGRES_USER: woodwork_user
+            POSTGRES_PASSWORD: woodwork_password
+            POSTGRES_DB: woodwork
+        ports:
+            - "5432:5432"
