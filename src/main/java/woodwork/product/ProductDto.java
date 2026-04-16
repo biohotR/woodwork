@@ -26,6 +26,7 @@ public class ProductDto {
     private String categoryName;
 
     private String imageUrl;
+    private Integer stockQuantity;
 
     public static ProductDto fromEntity(Product product) {
         ProductDto dto = new ProductDto();

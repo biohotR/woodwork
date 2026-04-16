@@ -1,6 +1,7 @@
 package woodwork.product;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.Optional;
@@ -46,5 +47,53 @@ class ProductServiceTest {
         // verify that the FileStorageService was never triggered.
         // don't want to save a physical file to the hard drive if the product doesn't exist
         verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void deductStock_ShouldDecreaseStockAndSave_WhenStockIsSufficient() {
+        UUID productId = UUID.randomUUID();
+        Product product = new Product();
+        product.setId(productId);
+        product.setStockQuantity(10);
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        productService.deductStock(productId, 3);
+
+        assertEquals(7, product.getStockQuantity());
+        verify(productRepository, times(1)).save(product);
+    }
+
+    @Test
+    void deductStock_ShouldThrowException_WhenNotEnoughStock() {
+        UUID productId = UUID.randomUUID();
+        Product product = new Product();
+        product.setId(productId);
+        product.setStockQuantity(2);
+
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            productService.deductStock(productId, 5);
+        });
+
+        assertTrue(exception.getMessage().contains("Not enough stock"));
+        
+        verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void deductStock_ShouldThrowException_WhenProductDoesNotExist() {
+        // Arrange
+        UUID fakeProductId = UUID.randomUUID();
+        when(productRepository.findById(fakeProductId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            productService.deductStock(fakeProductId, 1);
+        });
+
+        assertEquals("Product not found", exception.getMessage());
+        verify(productRepository, never()).save(any(Product.class));
     }
 }

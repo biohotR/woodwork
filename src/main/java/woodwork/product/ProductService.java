@@ -10,6 +10,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import jakarta.transaction.Transactional;
 import woodwork.category.Category;
 import woodwork.category.CategoryRepository;
 
@@ -63,6 +64,24 @@ public class ProductService {
         productResponse.setLast(products.isLast());
 
         return productResponse;
+    }
+
+    @Transactional
+    public void deductStock(UUID productId, int requestedQuantity) {
+        // find product
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+
+        // check if enough stock
+        if (product.getStockQuantity() < requestedQuantity) {
+            throw new IllegalStateException("Not enough stock available for product: " + product.getName());
+        }
+
+        // deduct the requested quantity
+        product.setStockQuantity(product.getStockQuantity() - requestedQuantity);
+
+        // save updated product
+        productRepository.save(product);
     }
 
     // create a blank entity and copy the data over to it
