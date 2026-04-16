@@ -6,6 +6,8 @@ import java.util.Optional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import woodwork.email.EmailService;
+
 @Service
 public class AuthService {
 
@@ -13,12 +15,14 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtGenerator jwtGenerator;
+    private final EmailService emailService;
 
-    public AuthService(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtGenerator jwtGenerator) {
+    public AuthService(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtGenerator jwtGenerator, EmailService emailService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtGenerator = jwtGenerator;
+        this.emailService = emailService;
     }
 
     public String register(RegisterDto dto) {
@@ -38,6 +42,12 @@ public class AuthService {
         // hash the password before setting it
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
 
+        UserProfile profile = new UserProfile();
+        profile.setFirstName(dto.getFirstName());
+        profile.setLastName(dto.getLastName());
+        user.setProfile(profile);
+        profile.setUser(user);
+
         // find(or get) the default role
         Role userRole = roleRepository.findByName("ROLE_CUSTOMER").orElseGet(() -> {
             Role newRole = new Role();
@@ -48,6 +58,8 @@ public class AuthService {
         // link role and save the user
         user.setRoles(Collections.singletonList(userRole));
         userRepository.save(user);
+
+        emailService.sendWelcomeEmail(user.getEmail(), dto.getFirstName());
 
         return "User registered successfully!";
     }
