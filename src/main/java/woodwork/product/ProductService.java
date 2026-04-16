@@ -69,7 +69,7 @@ public class ProductService {
     @Transactional
     public void deductStock(UUID productId, int requestedQuantity) {
         // find product
-        Product product = productRepository.findById(productId)
+        Product product = productRepository.findByIdWithLock(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
 
         // check if enough stock
@@ -113,7 +113,7 @@ public class ProductService {
 
     public ProductDto uploadProductImage(UUID productId, org.springframework.web.multipart.MultipartFile file) {
         // check if the product exists
-        Product product = productRepository.findById(productId)
+        Product product = productRepository.findByIdWithLock(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + productId));
 
         // save the physical file to the disk

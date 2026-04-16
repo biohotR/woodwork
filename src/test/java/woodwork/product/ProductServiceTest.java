@@ -34,7 +34,7 @@ class ProductServiceTest {
         MultipartFile mockFile = mock(MultipartFile.class);
 
         // explicitly tell the fake database to return nothing
-        when(productRepository.findById(fakeProductId)).thenReturn(Optional.empty());
+        when(productRepository.findByIdWithLock(fakeProductId)).thenReturn(Optional.empty());
 
         // if it doesn't crash, the test fails.
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -56,7 +56,7 @@ class ProductServiceTest {
         product.setId(productId);
         product.setStockQuantity(10);
 
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithLock(productId)).thenReturn(Optional.of(product));
 
         productService.deductStock(productId, 3);
 
@@ -71,7 +71,7 @@ class ProductServiceTest {
         product.setId(productId);
         product.setStockQuantity(2);
 
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithLock(productId)).thenReturn(Optional.of(product));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
             productService.deductStock(productId, 5);
@@ -84,11 +84,9 @@ class ProductServiceTest {
 
     @Test
     void deductStock_ShouldThrowException_WhenProductDoesNotExist() {
-        // Arrange
         UUID fakeProductId = UUID.randomUUID();
-        when(productRepository.findById(fakeProductId)).thenReturn(Optional.empty());
+        when(productRepository.findByIdWithLock(fakeProductId)).thenReturn(Optional.empty());
 
-        // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             productService.deductStock(fakeProductId, 1);
         });

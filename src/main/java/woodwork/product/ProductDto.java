@@ -35,6 +35,7 @@ public class ProductDto {
         dto.setDescription(product.getDescription());
         dto.setPrice(product.getPrice());
         dto.setImageUrl(product.getImageUrl());
+        dto.setStockQuantity(product.getStockQuantity());
         
         if (product.getCategory() != null) {
             dto.setCategoryId(product.getCategory().getId());
