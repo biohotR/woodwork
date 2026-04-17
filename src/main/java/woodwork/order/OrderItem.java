@@ -1,6 +1,5 @@
 package woodwork.order;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -39,6 +38,6 @@ public class OrderItem {
     @Column(nullable = false)
     private Integer quantity;
 
-    @Column(name = "purchase_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal purchasePrice;
+    @Column(name = "purchase_price", nullable = false)
+    private Integer purchasePrice;
 }

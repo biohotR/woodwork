@@ -1,4 +1,4 @@
-package woodwork.product;
+package woodwork.cart;
 
 import java.util.UUID;
 
@@ -14,34 +14,27 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import woodwork.category.Category;
+import woodwork.product.Product;
 
 @Entity
-@Table(name = "product")
+@Table(name = "cart_items")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Product {
+public class CartItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
-    private String name;
-
-    private String description;
-
-    private Integer price;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cart_id", nullable = false)
+    private Cart cart;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
-    
-    @Column(name = "image_url")
-    private String imageUrl;
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
 
-
-    @Column(name = "stock_quantity", nullable = false)
-    private Integer stockQuantity = 0;
+    @Column(nullable = false)
+    private Integer quantity;
 }

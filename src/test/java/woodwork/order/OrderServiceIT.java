@@ -46,14 +46,14 @@ class OrderServiceIT {
         // 2. create product a with stock
         productA = new Product();
         productA.setName("Table Saw");
-        productA.setPrice(500.0); // Legacy Double
+        productA.setPrice(50000);
         productA.setStockQuantity(10);
         productRepository.save(productA);
 
         // create product b with less stock
         productB = new Product();
         productB.setName("Wood Glue");
-        productB.setPrice(5.0);
+        productB.setPrice(500); // 5.00 in cents
         productB.setStockQuantity(1); // Only 1 left in stock!
         productRepository.save(productB);
     }
@@ -88,7 +88,7 @@ class OrderServiceIT {
         // verify the receipt was saved
         List<Order> orders = orderRepository.findByUserId(testUser.getId());
         assertEquals(1, orders.size());
-        assertEquals(1000.00, orders.get(0).getTotalAmount().doubleValue());
+        assertEquals(100000, orders.get(0).getTotalAmount().doubleValue());
     }
 
     @Test

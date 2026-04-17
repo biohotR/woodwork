@@ -32,12 +32,19 @@ public class OrderController {
     }
 
     @PatchMapping("/{orderId}/status")
-    @PreAuthorize("hasRole('ADMIN')") 
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> updateStatus(
             @PathVariable UUID orderId,
             @Valid @RequestBody OrderStatusUpdateRequestDto request) {
         
         String result = orderService.updateOrderStatus(orderId, request.getNewStatus());
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/checkout-cart")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ResponseEntity<String> checkoutFromCart(Principal principal) {
+        String result = orderService.checkoutFromCart(principal.getName());
         return ResponseEntity.ok(result);
     }
 }

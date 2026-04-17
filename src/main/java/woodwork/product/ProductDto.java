@@ -18,7 +18,7 @@ public class ProductDto {
 
     @NotNull(message = "Price is required")
     @Positive(message = "Price must be strictly greater than zero")
-    private Double price;
+    private Integer price;
     
     @NotNull(message = "Category ID is required to create a product")
     private UUID categoryId;
