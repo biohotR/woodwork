@@ -11,4 +11,5 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     
     // This allows you to easily fetch a user's order history later
     List<Order> findByUserId(UUID userId);
+    List<Order> findByUserUsername(String username);
 }

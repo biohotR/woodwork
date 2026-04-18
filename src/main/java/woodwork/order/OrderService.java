@@ -2,6 +2,7 @@ package woodwork.order;
 
 import java.util.UUID;
 
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -165,5 +166,21 @@ public class OrderService {
         // email for order confirmation - add later
 
         return "Checkout successful from Cart! Order ID: " + savedOrder.getId();
+    }
+
+    @Async
+    @Transactional
+    public void markOrderAsPaidByUsername(String username) {
+        // find the user's most recent PENDING order
+        Order pendingOrder = orderRepository.findByUserUsername(username).stream()
+                .filter(o -> o.getStatus().equals(OrderStatus.PENDING))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No pending order found for user: " + username));
+
+        // flip the status
+        pendingOrder.setStatus(OrderStatus.PAID);
+        orderRepository.save(pendingOrder);
+
+        // order confirmation - LATER
     }
 }

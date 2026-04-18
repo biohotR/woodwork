@@ -30,7 +30,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             // disable csrf => we are using JWTs, not browser cookies
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf
+            .ignoringRequestMatchers("/api/webhook/stripe/**"))
             
             // set session management to stateless
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -42,6 +43,7 @@ public class SecurityConfig {
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // uploaded images
                 .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/webhook/stripe/**").permitAll()
                 // other requests require authentification
                 .anyRequest().authenticated()
                 
