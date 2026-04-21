@@ -2,10 +2,10 @@ package woodwork.order;
 
 import java.util.UUID;
 
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import woodwork.cart.CartItem;
 import woodwork.cart.CartService;
 import woodwork.product.Product;
 import woodwork.product.ProductRepository;
@@ -105,82 +105,52 @@ public class OrderService {
     }
 
     @Transactional
-    public String checkoutFromCart(String username) {
-        // get user's active cart
+    public void markOrderAsPaidByUsername(String username) {
+        // get the user's cart
         woodwork.cart.Cart cart = cartService.getCartForUser(username);
 
-        // prevent empty checkout
         if (cart.getItems().isEmpty()) {
-            throw new IllegalStateException("Cannot process checkout: The cart is empty.");
+            System.out.println("Webhook fired, but cart is empty for user: " + username);
+            return;
         }
 
         User user = cart.getUser();
-
-        // initialize receipt
         Order order = new Order();
         order.setUser(user);
-        order.setStatus(OrderStatus.PENDING);
-        
-        // double totalAmount = 0.0;
+        order.setStatus(OrderStatus.PAID);
+
         long totalAmount = 0L;
 
-        // process inventory
-        for (woodwork.cart.CartItem cartItem : cart.getItems()) {
-            // lock the row in the database so nobody else can buy it simultaneously
+        for (CartItem cartItem : cart.getItems()) {
             Product product = productRepository.findByIdWithLock(cartItem.getProduct().getId())
                     .orElseThrow(() -> new IllegalArgumentException("Product not found: " + cartItem.getProduct().getName()));
 
-            // check stock
             if (product.getStockQuantity() < cartItem.getQuantity()) {
-                throw new IllegalStateException("Checkout failed: Not enough stock for " + product.getName() + 
-                                                ". Only " + product.getStockQuantity() + " left.");
+                throw new IllegalStateException("Payment succeeded, but out of stock for: " + product.getName());
             }
 
-            // deduct
             product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
             productRepository.save(product);
 
             int unitPriceCents = product.getPrice();
             int quantity = cartItem.getQuantity();
-            long lineTotal = (long) unitPriceCents * quantity;
 
-            // write the line item on the receipt
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(product);
-            orderItem.setQuantity(cartItem.getQuantity());
+            orderItem.setQuantity(quantity);
             orderItem.setPurchasePrice(unitPriceCents);
 
+
             order.getItems().add(orderItem);
-            totalAmount += lineTotal;
+            totalAmount += ((long) unitPriceCents * quantity);
         }
 
         order.setTotalAmount(totalAmount);
 
-        // commit order to the database
         Order savedOrder = orderRepository.save(order);
 
-        // wipe the cart clean
         cartService.clearCart(username);
-
-        // email for order confirmation - add later
-
-        return "Checkout successful from Cart! Order ID: " + savedOrder.getId();
-    }
-
-    @Async
-    @Transactional
-    public void markOrderAsPaidByUsername(String username) {
-        // find the user's most recent PENDING order
-        Order pendingOrder = orderRepository.findByUserUsername(username).stream()
-                .filter(o -> o.getStatus().equals(OrderStatus.PENDING))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("No pending order found for user: " + username));
-
-        // flip the status
-        pendingOrder.setStatus(OrderStatus.PAID);
-        orderRepository.save(pendingOrder);
-
-        // order confirmation - LATER
+        System.out.println("Payment verified! Order " + savedOrder.getId() + " created and inventory updated.");
     }
 }

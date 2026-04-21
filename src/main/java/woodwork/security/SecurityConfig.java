@@ -1,5 +1,9 @@
 package woodwork.security;
 
+import static org.springframework.http.HttpMethod.*;
+
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -9,6 +13,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;;
 
 @Configuration
 @EnableWebSecurity
@@ -29,9 +36,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             // disable csrf => we are using JWTs, not browser cookies
-            .csrf(csrf -> csrf
-            .ignoringRequestMatchers("/api/webhook/stripe/**"))
+            .csrf(csrf -> csrf.disable())
             
             // set session management to stateless
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -44,6 +51,7 @@ public class SecurityConfig {
                 // uploaded images
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/webhook/stripe/**").permitAll()
+                .requestMatchers(GET, "/api/products/**").permitAll()
                 // other requests require authentification
                 .anyRequest().authenticated()
                 
@@ -51,5 +59,26 @@ public class SecurityConfig {
         
             http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        
+        // allow vite development server
+        configuration.setAllowedOrigins(List.of("http://localhost:5174")); 
+        
+        // allow standard http methods
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        
+        // allow the headers the react app will send
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+
+        // apply rules to all endpoints
+        source.registerCorsConfiguration("/**", configuration);
+        
+        return source;
     }
 }

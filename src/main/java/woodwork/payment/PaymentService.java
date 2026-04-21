@@ -1,11 +1,14 @@
 package woodwork.payment;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
 
+import jakarta.annotation.PostConstruct;
 import woodwork.cart.Cart;
 import woodwork.cart.CartItem;
 import woodwork.cart.CartService;
@@ -14,10 +17,19 @@ import woodwork.cart.CartService;
 public class PaymentService {
 
     private final CartService cartService;
+    
+    @Value("${stripe.api.key}")
+    private String stripeSecretKey;
 
     public PaymentService(CartService cartService) {
         this.cartService = cartService;
     }
+
+    @PostConstruct
+    public void init() {
+        Stripe.apiKey = stripeSecretKey;
+    }
+
 
     public PaymentIntentResponseDto createPaymentIntent(String username) throws StripeException {
         // get user's cart from the database

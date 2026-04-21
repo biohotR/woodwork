@@ -56,4 +56,13 @@ public class CartController {
         cartService.clearCart(principal.getName());
         return ResponseEntity.ok("Cart cleared successfully.");
     }
+
+    @PostMapping("/sync")
+    public ResponseEntity<CartDto> syncCart(
+            Principal principal,
+            @RequestBody woodwork.cart.CartSyncRequestDto request) {
+        
+        Cart cart = cartService.syncCart(principal.getName(), request.getItems());
+        return ResponseEntity.ok(CartDto.fromEntity(cart));
+    }
 }

@@ -1,5 +1,6 @@
 package woodwork.cart;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,11 +18,14 @@ public class CartService {
     private final CartRepository cartRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final CartItemRepository cartItemRepository;
 
-    public CartService(CartRepository cartRepository, UserRepository userRepository, ProductRepository productRepository) {
+    public CartService(CartRepository cartRepository, UserRepository userRepository, 
+        ProductRepository productRepository, CartItemRepository cartItemRepository) {
         this.cartRepository = cartRepository;
         this.userRepository = userRepository;
         this.productRepository = productRepository;
+        this.cartItemRepository = cartItemRepository;
     }
 
     // get or create cart
@@ -81,5 +85,29 @@ public class CartService {
         Cart cart = getCartForUser(username);
         cart.getItems().clear();
         cartRepository.save(cart);
+    }
+
+    @Transactional
+    public Cart syncCart(String username, List<CartItemRequestDto> mergedItems) {
+        Cart cart = getCartForUser(username);
+
+        cartItemRepository.deleteByCartId(cart.getId());
+
+        // clear the old items
+        cart.getItems().clear();
+
+        for (CartItemRequestDto itemRequest : mergedItems) {
+            Product product = productRepository.findById(itemRequest.getProductId())
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+
+            CartItem newItem = new CartItem();
+            newItem.setCart(cart);
+            newItem.setProduct(product);
+            newItem.setQuantity(itemRequest.getQuantity());
+            
+            cart.getItems().add(newItem);
+        }
+
+        return cartRepository.save(cart);
     }
 }

@@ -40,11 +40,4 @@ public class OrderController {
         String result = orderService.updateOrderStatus(orderId, request.getNewStatus());
         return ResponseEntity.ok(result);
     }
-
-    @PostMapping("/checkout-cart")
-    @PreAuthorize("hasRole('CUSTOMER')")
-    public ResponseEntity<String> checkoutFromCart(Principal principal) {
-        String result = orderService.checkoutFromCart(principal.getName());
-        return ResponseEntity.ok(result);
-    }
 }

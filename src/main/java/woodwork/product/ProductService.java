@@ -87,9 +87,9 @@ public class ProductService {
     // create a blank entity and copy the data over to it
     public ProductDto createProduct(ProductDto dto) {
         Product product = new Product();
-        product.setName(dto.getName());
+        product.setName(dto.getProductName());
         product.setDescription(dto.getDescription());
-        product.setPrice(dto.getPrice());
+        product.setPrice(dto.getUnitPrice());
 
         // relational database part
         // if a category is found, we link the product and category together
