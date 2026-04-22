@@ -66,7 +66,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // allow vite development server
-        configuration.setAllowedOrigins(List.of("http://localhost:5174")); 
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); 
         
         // allow standard http methods
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));

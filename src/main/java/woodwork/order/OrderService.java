@@ -30,57 +30,6 @@ public class OrderService {
     }
 
     @Transactional
-    public String processCheckout(String username, CheckoutRequestDto checkoutRequest) {
-        // identify the buyer
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        // initialize order
-        Order order = new Order();
-        order.setUser(user);
-        order.setStatus(OrderStatus.PENDING);
-        
-        Long runningTotal = 0L;
-
-        // process each item in the cart
-        for (OrderItemRequestDto itemRequest : checkoutRequest.getItems()) {
-            
-            // pessimistic lock on this specific product
-            Product product = productRepository.findByIdWithLock(itemRequest.getProductId())
-                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + itemRequest.getProductId()));
-
-            // check if enough stock
-            if (product.getStockQuantity() < itemRequest.getQuantity()) {
-                throw new IllegalStateException("Not enough stock for: " + product.getName());
-            }
-
-            product.setStockQuantity(product.getStockQuantity() - itemRequest.getQuantity());
-
-            // line item for the cart
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(order);
-            orderItem.setProduct(product);
-            orderItem.setQuantity(itemRequest.getQuantity());
-            orderItem.setPurchasePrice(product.getPrice());
-
-            // add to order and update total
-            order.getItems().add(orderItem);
-            
-            // Long lineItemTotal = BigDecimal.valueOf(product.getPrice())
-            //         .multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
-            Long lineItemTotal = (long) product.getPrice() * itemRequest.getQuantity();
-            runningTotal += lineItemTotal;
-        }
-
-        order.setTotalAmount(runningTotal);
-
-        // save the order (cascade logic will automatically save the OrderItems too)
-        orderRepository.save(order);
-
-        return "Checkout successful. Order ID: " + order.getId();
-    }
-
-    @Transactional
     public String updateOrderStatus(UUID orderId, OrderStatus newStatus) {
         // find order
         Order order = orderRepository.findById(orderId)
@@ -105,52 +54,49 @@ public class OrderService {
     }
 
     @Transactional
-    public void markOrderAsPaidByUsername(String username) {
-        // get the user's cart
+    public Order createPendingOrderFromCart(String username) {
         woodwork.cart.Cart cart = cartService.getCartForUser(username);
 
         if (cart.getItems().isEmpty()) {
-            System.out.println("Webhook fired, but cart is empty for user: " + username);
-            return;
+            throw new IllegalStateException("Cannot checkout an empty cart.");
         }
 
         User user = cart.getUser();
         Order order = new Order();
         order.setUser(user);
-        order.setStatus(OrderStatus.PAID);
+        order.setStatus(OrderStatus.PENDING); // Reserving it!
 
         long totalAmount = 0L;
 
         for (CartItem cartItem : cart.getItems()) {
             Product product = productRepository.findByIdWithLock(cartItem.getProduct().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + cartItem.getProduct().getName()));
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found"));
 
+            // 1. Check stock
             if (product.getStockQuantity() < cartItem.getQuantity()) {
-                throw new IllegalStateException("Payment succeeded, but out of stock for: " + product.getName());
+                throw new IllegalStateException("Out of stock for: " + product.getName());
             }
 
+            // 2. Deduct stock (Reserve it)
             product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
             productRepository.save(product);
-
-            int unitPriceCents = product.getPrice();
-            int quantity = cartItem.getQuantity();
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(product);
-            orderItem.setQuantity(quantity);
-            orderItem.setPurchasePrice(unitPriceCents);
-
+            orderItem.setQuantity(cartItem.getQuantity());
+            orderItem.setPurchasePrice(product.getPrice());
 
             order.getItems().add(orderItem);
-            totalAmount += ((long) unitPriceCents * quantity);
+            totalAmount += ((long) product.getPrice() * cartItem.getQuantity());
         }
 
         order.setTotalAmount(totalAmount);
-
         Order savedOrder = orderRepository.save(order);
 
-        cartService.clearCart(username);
-        System.out.println("Payment verified! Order " + savedOrder.getId() + " created and inventory updated.");
+        // 3. Clear the cart NOW, not later.
+        cartService.clearCart(username); 
+        
+        return savedOrder;
     }
 }

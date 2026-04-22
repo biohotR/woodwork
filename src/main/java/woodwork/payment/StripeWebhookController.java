@@ -47,22 +47,22 @@ public class StripeWebhookController {
 
         // We only care about successful payments right now
         if ("payment_intent.succeeded".equals(event.getType())) {
-            EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-            
-            if (dataObjectDeserializer.getObject().isPresent()) {
-                PaymentIntent paymentIntent = (PaymentIntent) dataObjectDeserializer.getObject().get();
-                
-                // Read the nametag we attached in the PaymentService
-                String username = paymentIntent.getMetadata().get("username");
+                    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+                    
+                    if (dataObjectDeserializer.getObject().isPresent()) {
+                        PaymentIntent paymentIntent = (PaymentIntent) dataObjectDeserializer.getObject().get();
+                        
+                        // Read the Order ID we attached
+                        String orderIdString = paymentIntent.getMetadata().get("orderId");
 
-                if (username != null) {
-                    System.out.println("Payment succeeded for user: " + username);
-                    orderService.markOrderAsPaidByUsername(username);
+                        if (orderIdString != null) {
+                            System.out.println("Payment succeeded for Order: " + orderIdString);
+                            // Use your existing method to mark it paid!
+                            orderService.updateOrderStatus(java.util.UUID.fromString(orderIdString), woodwork.order.OrderStatus.PAID);
+                        }
+                    }
                 }
-            }
+            // Always return 200 OK fast so Stripe doesn't think the server crashed
+            return ResponseEntity.ok("Success");
         }
-
-        // Always return 200 OK fast so Stripe doesn't think the server crashed
-        return ResponseEntity.ok("Success");
-    }
 }

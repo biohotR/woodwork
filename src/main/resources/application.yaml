@@ -1,0 +1,35 @@
+spring:
+    datasource:
+        url: jdbc:postgresql://localhost:5432/woodwork
+        username: woodwork_user
+        password: woodwork_password
+    jpa:
+        hibernate:
+            ddl-auto: validate
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+        show_sql: true
+    liquibase:
+        change-log: classpath:db/changelog/db.changelog-master.yaml
+    mail:
+        host: sandbox.smtp.mailtrap.io
+        port: 2525
+        username: ${MAILTRAP_USERNAME}
+        password: ${MAILTRAP_PASSWORD}
+        properties:
+            mail:
+                smtp:
+                    auth: true
+                    starttls:
+                        enable: true
+
+server:
+  port: 8081
+
+
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+  api:
+    key: ${STRIPE_SECRET_KEY}

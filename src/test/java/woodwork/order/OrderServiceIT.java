@@ -9,13 +9,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
+import woodwork.cart.Cart;
+import woodwork.cart.CartItem;
+import woodwork.cart.CartItemRepository;
+import woodwork.cart.CartRepository;
 import woodwork.product.Product;
 import woodwork.product.ProductRepository;
 import woodwork.security.User;
 import woodwork.security.UserRepository;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class OrderServiceIT {
 
     @Autowired
@@ -30,96 +36,111 @@ class OrderServiceIT {
     @Autowired
     private UserRepository userRepository;
 
+    // We need the Cart repositories to set up the test state
+    @Autowired
+    private CartRepository cartRepository;
+
+    @Autowired
+    private CartItemRepository cartItemRepository;
+
     private User testUser;
     private Product productA;
     private Product productB;
+    private Cart testCart;
 
     @BeforeEach
     void setUp() {
-        // create real user in the database
         testUser = new User();
         testUser.setUsername("integration_tester");
         testUser.setPassword("hashedpassword123!");
         testUser.setEmail("integration@woodwork.com");
         userRepository.save(testUser);
 
-        // 2. create product a with stock
         productA = new Product();
         productA.setName("Table Saw");
         productA.setPrice(50000);
         productA.setStockQuantity(10);
         productRepository.save(productA);
 
-        // create product b with less stock
         productB = new Product();
         productB.setName("Wood Glue");
-        productB.setPrice(500); // 5.00 in cents
-        productB.setStockQuantity(1); // Only 1 left in stock!
+        productB.setPrice(500); 
+        productB.setStockQuantity(1); 
         productRepository.save(productB);
+
+        // Initialize an empty cart for the user
+        testCart = new Cart();
+        testCart.setUser(testUser);
+        cartRepository.save(testCart);
     }
 
     @AfterEach
     void tearDown() {
-        // clean up
+        // Clean up in reverse order to respect foreign key constraints
+        cartItemRepository.deleteAll();
+        cartRepository.deleteAll();
         orderRepository.deleteAll();
-        productRepository.delete(productA);
-        productRepository.delete(productB);
-        userRepository.delete(testUser);
+        productRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
-    void processCheckout_ShouldDeductStockAndSaveOrder_WhenSuccessful() {
-        // buy 2 table saws
-        OrderItemRequestDto item1 = new OrderItemRequestDto();
-        item1.setProductId(productA.getId());
+    void createPendingOrder_ShouldDeductStockSaveOrderAndClearCart_WhenSuccessful() {
+        // 1. Arrange: Add 2 Table Saws to the database cart
+        CartItem item1 = new CartItem();
+        item1.setCart(testCart);
+        item1.setProduct(productA);
         item1.setQuantity(2);
+        cartItemRepository.save(item1);
 
-        CheckoutRequestDto request = new CheckoutRequestDto();
-        request.setItems(List.of(item1));
+        // 2. Act: Call the new method
+        Order order = orderService.createPendingOrderFromCart(testUser.getUsername());
 
-        String result = orderService.processCheckout(testUser.getUsername(), request);
+        // 3. Assert: Order state
+        assertNotNull(order);
+        assertEquals(OrderStatus.PENDING, order.getStatus(), "Order should be reserved as PENDING");
+        assertEquals(100000, order.getTotalAmount(), "Total should be 100,000 cents");
 
-        assertTrue(result.contains("Checkout successful"));
-
-        // verify stock deducted properly
+        // 4. Assert: Stock was deducted
         Product updatedProduct = productRepository.findById(productA.getId()).orElseThrow();
-        assertEquals(8, updatedProduct.getStockQuantity());
+        assertEquals(8, updatedProduct.getStockQuantity(), "Stock should be reduced from 10 to 8");
 
-        // verify the receipt was saved
-        List<Order> orders = orderRepository.findByUserId(testUser.getId());
-        assertEquals(1, orders.size());
-        assertEquals(100000, orders.get(0).getTotalAmount().doubleValue());
+        // 5. Assert: Cart was successfully cleared
+        Cart updatedCart = cartRepository.findByUserUsername(testUser.getUsername()).orElseThrow();
+        assertTrue(updatedCart.getItems().isEmpty(), "Cart should be empty after successful order creation");
     }
 
     @Test
-    void processCheckout_ShouldRollbackEverything_WhenOneItemFails() {
-        OrderItemRequestDto item1 = new OrderItemRequestDto();
-        item1.setProductId(productA.getId());
+    void createPendingOrder_ShouldRollbackEverything_WhenOneItemFails() {
+        // 1. Arrange: Add valid item and an out-of-stock item
+        CartItem item1 = new CartItem();
+        item1.setCart(testCart);
+        item1.setProduct(productA);
         item1.setQuantity(1);
+        cartItemRepository.save(item1);
 
-        OrderItemRequestDto item2 = new OrderItemRequestDto();
-        item2.setProductId(productB.getId());
-        item2.setQuantity(5); // this will trigger the exception
-        
+        CartItem item2 = new CartItem();
+        item2.setCart(testCart);
+        item2.setProduct(productB);
+        item2.setQuantity(5); // Only 1 in stock, this will trigger the crash
+        cartItemRepository.save(item2);
 
-        CheckoutRequestDto request = new CheckoutRequestDto();
-        request.setItems(List.of(item1, item2));
-
-        // verify it throws the exception
+        // 2. Act & Assert: Verify it throws the exception
         IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            orderService.processCheckout(testUser.getUsername(), request);
+            orderService.createPendingOrderFromCart(testUser.getUsername());
         });
+        assertTrue(exception.getMessage().contains("Out of stock"));
 
-        assertTrue(exception.getMessage().contains("Not enough stock"));
-
-        // did product a stock roll back?
-        // if broken, should be 9
-        // if not, it reverses the deduction and returns to 10.
+        // 3. Assert: Product A stock rolled back (didn't stay at 9)
         Product rolledBackProductA = productRepository.findById(productA.getId()).orElseThrow();
         assertEquals(10, rolledBackProductA.getStockQuantity(), "Stock for Product A should have rolled back to 10!");
 
-        // check if accidentally save a partial receipt to the database
-        List<Order> orders = orderRepository.findByUserId(testUser.getId());
+        // 4. Assert: No order was saved
+        List<Order> orders = orderRepository.findAll();
         assertTrue(orders.isEmpty(), "No order should have been saved to the database!");
+
+        // 5. Assert: Cart was NOT cleared (because the transaction crashed before reaching the clear method)
+        Cart rolledBackCart = cartRepository.findByUserUsername(testUser.getUsername()).orElseThrow();
+        assertFalse(rolledBackCart.getItems().isEmpty(), "Cart should still contain items because the transaction failed!");
     }
 }

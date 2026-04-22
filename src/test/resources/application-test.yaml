@@ -1,0 +1,3 @@
+stripe:
+  secret-key: sk_test_dummy_key_for_testing
+  webhook-secret: whsec_dummy_secret_for_testing
